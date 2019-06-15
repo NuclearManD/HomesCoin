@@ -63,6 +63,8 @@ def smartsleep(seconds):
         time.sleep(.1)
 
 print("Oracle main loop starting.")
+print("Token price at start: $", get_price()*get_etherprice())
+smartsleep(5)
 while(True):
     # get etherprice once per tick to avoid spamming the price api server
     ether_price = get_etherprice()
@@ -71,7 +73,7 @@ while(True):
     if abs(token_price - price_target)>swing_amount:
         print("Changing token price from $", token_price, " to $", price_target, "...")
         transaction = set_price(price_target/ether_price)
-        print("Transaction hash is ", transaction)
+        print("Transaction hash is ", hex(int.from_bytes(transaction, 'big')))
         try:
             web3.eth.waitForTransactionReceipt(transaction, 180)
             print("Complete.  New price is $", get_price()*get_etherprice())
