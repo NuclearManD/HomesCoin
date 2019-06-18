@@ -4,7 +4,7 @@ import time, requests, json
 # basic configuration
 contract_adr = "0x9E405115F9992BE0D0bFF2cCc81Eb647dABB74E4"
 price_target = 1000.0 # in USD
-swing_amount = 100
+swing_amount = 5
 
 with open("abi.json") as f:
     abi = json.load(f)
@@ -15,8 +15,12 @@ with open("password.txt") as f:
         password = password[:-1]
 
 def get_etherprice():
-    r = requests.get(url="https://api.coinmarketcap.com/v1/ticker/ethereum/")
-    return float(r.json()[0]['price_usd'])
+    while True:
+        try:
+            r = requests.get(url="https://api.coinmarketcap.com/v1/ticker/ethereum/")
+            return float(r.json()[0]['price_usd'])
+        except:
+            print("Failed to get price, trying again...")
 
 web3 = Web3(Web3.IPCProvider('/home/nuclaer/.ethereum/testnet/geth.ipc'))#HTTPProvider("http://localhost:8545"))
 
@@ -83,3 +87,4 @@ while(True):
             ook()
     else:
         smartsleep(180)
+        print("Token price is now $", get_price()*get_etherprice())
