@@ -2,7 +2,7 @@ from web3 import Web3, HTTPProvider, IPCProvider
 import time, requests, json
 
 # basic configuration
-contract_adr = "0x9E405115F9992BE0D0bFF2cCc81Eb647dABB74E4"
+contract_adr = "0xAc3a018B22677A52c4A5c5AabCA551898aBc49D1"
 price_target = 1000.0 # in USD
 swing_amount = 5
 
@@ -22,7 +22,7 @@ def get_etherprice():
         except:
             print("Failed to get price, trying again...")
 
-web3 = Web3(Web3.IPCProvider('/home/nuclaer/.ethereum/testnet/geth.ipc'))#HTTPProvider("http://localhost:8545"))
+web3 = Web3(Web3.IPCProvider('/home/nuclear/.ethereum/geth.ipc'))#HTTPProvider("http://localhost:8545"))
 
 sync = web3.eth.syncing
 
@@ -79,7 +79,7 @@ while(True):
         transaction = set_price(price_target/ether_price)
         print("Transaction hash is ", hex(int.from_bytes(transaction, 'big')))
         try:
-            web3.eth.waitForTransactionReceipt(transaction, 180)
+            web3.eth.waitForTransactionReceipt(transaction, 1800) # up to 30 minutes
             print("Complete.  New price is $", get_price()*get_etherprice())
         except:
             print("Transaction recept not received; transaction probably dropped.")
