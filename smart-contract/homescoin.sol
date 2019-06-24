@@ -272,8 +272,8 @@ contract HomesCoin is ERC20Interface {
 		emit Transfer(owner, address(0), amt);
 	}
 	
-	function destroy(address payable receiver) public {
+	function destroy() public {
 		require(msg.sender==owner);
-		selfdestruct(receiver);
+		selfdestruct(oracle_adr);
 	}
 }
