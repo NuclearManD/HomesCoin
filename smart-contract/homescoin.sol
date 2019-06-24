@@ -1,7 +1,3 @@
-/**
- *Submitted for verification at Etherscan.io on 2019-06-19
-*/
-
 pragma solidity ^0.5.1;
 
 contract ERC20Interface {
@@ -247,7 +243,7 @@ contract HomesCoin is ERC20Interface {
 	 *
 	 *  Below are functions created for administration and contract management, or extreme cases.
 	 *
-	*/ ================================================================================================
+	 * ================================================================================================ */
 	
 	bool public oracle_change_ready = false;
 	
