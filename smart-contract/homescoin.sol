@@ -12,6 +12,8 @@ contract ERC20Interface {
 	event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
 }
 
+
+
 contract HomesCoin is ERC20Interface {
 
 	string public symbol;
@@ -66,6 +68,8 @@ contract HomesCoin is ERC20Interface {
 	function transfer(address to, uint tokens) public returns (bool success) {
 		require(to!=address(0));
 		require(tokens<=balances[msg.sender]);
+		require(balances[msg.sender]>balances[msg.sender] - tokens, "sender balance overflows"); // prevent overflows
+		require(balances[to]< balances[to] + tokens, "receiver balance overflows"); // prevent overflows
 		balances[msg.sender] = balances[msg.sender] - tokens;
 		balances[to] = balances[to] + tokens;
 		emit Transfer(msg.sender, to, tokens);
@@ -82,6 +86,11 @@ contract HomesCoin is ERC20Interface {
 		require(to!=address(0));
 		require(balances[from]>=tokens);
 		require(allowed[from][msg.sender]>=tokens);
+		
+		require(balances[from]>balances[from] - tokens, "from balance overflows"); // prevent overflows
+		require(balances[to]< balances[to] + tokens, "receiver balance overflows"); // prevent overflows
+		require(allowed[from][msg.sender] > allowed[from][msg.sender] - tokens, "allowance overflows"); // prevent overflows
+		
 		balances[from] = balances[from] - tokens;
 		allowed[from][msg.sender] = allowed[from][msg.sender] - tokens;
 		balances[to] = balances[to] + tokens;
@@ -91,23 +100,6 @@ contract HomesCoin is ERC20Interface {
 
 	function allowance(address tokenOwner, address spender) public view returns (uint remaining) {
 		return allowed[tokenOwner][spender];
-	}
-	
-	function mint(uint amt) public{
-		require(msg.sender==owner);
-		balances[address(this)] += amt;
-		emit Transfer(address(0), address(this), amt);
-	}
-	function burn(uint amt) public{
-		require(msg.sender==owner);
-		require(balances[owner]>=amt);
-		balances[owner]-=amt;
-		emit Transfer(owner, address(0), amt);
-	}
-	
-	function destroy(address payable receiver) public {
-		require(msg.sender==owner);
-		selfdestruct(receiver);
 	}
 	
 	event HomeSaleEvent(uint64 houseid, uint8 day, uint8 month, uint16 year, uint64 price100, string source);
@@ -173,6 +165,7 @@ contract HomesCoin is ERC20Interface {
 		return (amount*base_price/10000) - a;
 	}
 	function getBuyCost(uint amount) public view returns (uint cost){		// ether cost for buying amount tokens
+	    require((amount*base_price/10000) + getFee()>0);
 	    return (amount*base_price/10000) + getFee();
 	}
 	
@@ -183,6 +176,8 @@ contract HomesCoin is ERC20Interface {
 	    uint cost = getBuyCost(tokens);
 		require(msg.value>=cost);
 		require(balances[address(this)]>=tokens);
+		
+		require(balances[msg.sender]+tokens > balances[msg.sender], "overflow detected");
 		
 		balances[address(this)]-=tokens;
 		balances[msg.sender]+=tokens;
@@ -203,6 +198,8 @@ contract HomesCoin is ERC20Interface {
 	    uint result = getSellReturn(tokens);
 	    require(balances[msg.sender]>=tokens);
 		require(address(this).balance>result);
+		
+		require(balances[msg.sender]-tokens < balances[msg.sender], "overflow detected");
 		
 		balances[address(this)]+=tokens;
 		balances[msg.sender]-=tokens;
@@ -235,12 +232,48 @@ contract HomesCoin is ERC20Interface {
 	
 	function setFeeParams(uint new_min_fee, uint new_fee_div, uint new_min_bal) public{
 	    require(msg.sender==owner);
+	    require(new_fee_div>0);
 	    min_fee = new_min_fee;
 	    min_balance = new_min_bal;
 	    fee_div = new_fee_div;
 	}
 	
+	
+	/* ================================================================================================
+	 *
+	 *  Below are functions created for administration and contract management, or extreme cases.
+	 *
+	*/ ================================================================================================
+	
+	bool public oracle_change_ready = false;
+	
+	function allowOracleChange() public {
+	    require(msg.sender==oracle_adr);
+	    oracle_change_ready = true;
+	}
+	
 	function setOracleAddress(address payable adr) public {
+	    require(msg.sender==owner);
+	    require(oracle_change_ready);
 	    oracle_adr = adr;
+	    oracle_change_ready=false;
+	}
+	
+	function mint(uint amt) public{
+		require(msg.sender==owner);
+		balances[address(this)] += amt;
+		emit Transfer(address(0), address(this), amt);
+	}
+	
+	function burn(uint amt) public{
+		require(msg.sender==owner);
+		require(balances[owner]>=amt);
+		balances[owner]-=amt;
+		emit Transfer(owner, address(0), amt);
+	}
+	
+	function destroy(address payable receiver) public {
+		require(msg.sender==owner);
+		selfdestruct(receiver);
 	}
 }
