@@ -66,6 +66,7 @@ contract HomesCoin is ERC20Interface {
 	}
 
 	function transfer(address to, uint tokens) public returns (bool success) {
+	    assert(msg.data.length >= 64 + 4);
 		require(to!=address(0));
 		require(tokens<=balances[msg.sender]);
 		require(balances[msg.sender]>balances[msg.sender] - tokens, "sender balance overflows"); // prevent overflows
@@ -83,6 +84,7 @@ contract HomesCoin is ERC20Interface {
 	}
 
 	function transferFrom(address from, address to, uint tokens) public returns (bool success) {
+	    require(msg.data.length >= 96 + 4);
 		require(to!=address(0));
 		require(balances[from]>=tokens);
 		require(allowed[from][msg.sender]>=tokens);
@@ -181,14 +183,15 @@ contract HomesCoin is ERC20Interface {
 		
 		balances[address(this)]-=tokens;
 		balances[msg.sender]+=tokens;
+		    
+		lastTradedPrice = base_price;
+		
 		msg.sender.transfer(msg.value-cost);
 		
 		if(oracle_adr.balance<min_balance)
 		    oracle_adr.transfer(getFee());
 		else
 		    owner.transfer(getFee()/2);
-		    
-		lastTradedPrice = base_price;
 		    
 		emit Transfer(address(this), msg.sender, tokens);
 		emit BuyEvent(tokens);
@@ -203,22 +206,17 @@ contract HomesCoin is ERC20Interface {
 		
 		balances[address(this)]+=tokens;
 		balances[msg.sender]-=tokens;
-		msg.sender.transfer(result);
+		    
+		lastTradedPrice = base_price;
+		
 		if(oracle_adr.balance<min_balance)
 		    oracle_adr.transfer(getFee());
 		else
 		    owner.transfer(getFee()/2);
-		    
-		lastTradedPrice = base_price;
+		msg.sender.transfer(result);
 		    
 		emit Transfer(msg.sender, address(this), tokens);
 		emit SellEvent(tokens);
-	}
-	
-	function forsale(uint tokens)public{
-		require(msg.sender==owner);
-		allowed[owner][address(0)] = tokens;
-		emit Approval(owner, address(0), tokens);
 	}
 	
 	function get_tradable() public view returns (uint tradable){
