@@ -29,6 +29,7 @@ contract HomesCoin is ERC20Interface {
 	address payable public oracle_adr;	// address to send fees to
 	
 	address payable public owner;
+	address payable public database_owner;
 
 	mapping(address => uint) public balances;
 	mapping(address => mapping(address => uint)) allowed;
@@ -36,12 +37,13 @@ contract HomesCoin is ERC20Interface {
 	// ------------------------------------------------------------------------
 	// Constructor
 	// ------------------------------------------------------------------------
-	constructor() public {
+	constructor(address payable token_owner, address payable db_owner) public {
 		symbol = "HOM";
 		name = "HOM Coin";
 		decimals = 18;
 		_totalSupply = 10000000 * 10**uint(decimals);
-		owner = msg.sender;
+		owner = token_owner;
+		database_owner = db_owner;
 		balances[address(this)] = _totalSupply;
 		emit Transfer(address(0), owner, _totalSupply);
 		base_price=100000;
@@ -49,6 +51,7 @@ contract HomesCoin is ERC20Interface {
 		min_balance = .02 ether;
 		fee_div = 100;
 		min_fee = .000001 ether;
+		oracle_change_ready = true; // ensure that the owner can set the oracle address appropriately.
 	}
 
 	function totalSupply() public view returns (uint) {
@@ -119,12 +122,12 @@ contract HomesCoin is ERC20Interface {
 	uint64 public num_houses = 0;
 	
 	function makeEvent(uint64 houseid, uint8 day, uint8 month, uint16 year, uint64 price100, string memory source) public{
-		require(msg.sender==owner);
+		require(msg.sender==database_owner);
 		emit HomeSaleEvent(houseid,day,month,year, price100, source);
 	}
 	
 	function addHouse(string memory adr, uint32 sqft, uint8 bedroom,uint8 bathroom,uint8 h_type, uint16 yr_built, uint32 lotsize, uint64 parcel, uint32 zip) public{
-		require(msg.sender==owner);
+		require(msg.sender==database_owner);
 		require(bytes(adr).length<128);
 		addresses[num_houses] = adr;
 		sqfts[num_houses]=sqft;
@@ -138,7 +141,7 @@ contract HomesCoin is ERC20Interface {
 		num_houses++;
 	}
 	function resetHouseParams(uint64 num_house, uint32 sqft, uint8 bedroom,uint8 bathroom,uint8 h_type, uint16 yr_built, uint32 lotsize, uint64 parcel, uint32 zip) public{
-		require(msg.sender==owner);
+		require(msg.sender==database_owner);
 		sqfts[num_house]=sqft;
 		bedrooms[num_house]=bedroom;
 		bathrooms[num_house]=bathroom;
