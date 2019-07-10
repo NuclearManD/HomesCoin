@@ -107,7 +107,13 @@ contract HomesCoin is ERC20Interface {
 		return allowed[tokenOwner][spender];
 	}
 	
-	event HomeSaleEvent(uint64 houseid, uint8 day, uint8 month, uint16 year, uint64 price100, string source);
+	event OfferCreateEvent(uint64 offer_id, uint64 houseid, uint8 day, uint8 month, uint16 year, uint64 price, string source, uint16 escrow_unix_time);
+	event OfferCancelEvent(uint64 offer_id);
+	
+	event OfferAcceptEvent(uint64 offer_id);
+	event BuyCancelEvent(uint64 offer_id);
+	
+	event OwnershipTransfer(uint64 offer_id);
 	
 	mapping(uint64=>string) public addresses;
 	mapping(uint64=>uint32) public sqfts;
@@ -121,9 +127,70 @@ contract HomesCoin is ERC20Interface {
 	
 	uint64 public num_houses = 0;
 	
-	function makeEvent(uint64 houseid, uint8 day, uint8 month, uint16 year, uint64 price100, string memory source) public{
+	mapping(uint64=>string) public offer_src;
+	mapping(uint64=>uint64) public offer_house;
+	mapping(uint64=>uint256) public offer_price;
+	mapping(uint64=>uint64) public offer_escrow_end_unix_time;
+	mapping(uint64=>uint64) public offer_escrow_unix_time;
+	mapping(uint64=>address payable) public offer_recipient;
+	mapping(uint64=>address payable) public offer_acceptor;
+	
+	uint64 public num_offers = 0;
+	
+	// price is in 1e-18 HOM Coin (same units as transfer(), mint(), buy(), sell(), etc)
+	function makeOffer(uint64 houseid, uint8 day, uint8 month, uint16 year, uint256 price, string memory source, uint16 escrow_unix_time, address payable recipient) public{
 		require(msg.sender==database_owner);
-		emit HomeSaleEvent(houseid,day,month,year, price100, source);
+		emit OfferCreateEvent(num_offers, houseid,day,month,year, price, source, escrow_unix_time);
+		offer_src[num_offers] = source;
+		offer_house[num_offers] = houseid;
+		offer_escrow_end_unix_time[num_offers] = escrow_unix_time;
+		offer_recipient[num_offers] = recipient;
+		offer_acceptor[num_offers] = address payable(0);
+		num_offers+=1;
+	}
+	
+	function cancelOffer(uint64 offer_id) public{
+	    require(offer_id<num_offers);
+	    require(offer_recipient[offer_id]==msg.sender);
+	    require(offer_acceptor[offer_id]==address payable(0));
+	    offer_recipient[offer_id] = address payable(0);
+	    emit OfferCancelEvent(offer_id);
+	}
+	
+	function buyHouse(uint64 offer_id) public {
+	    require(offer_id<num_offers);
+	    require(balanceOf(msg.sender)>=offer_price[offer_id]);
+	    require(offer_acceptor[offer_id]!=address payable(0));
+	    require(offer_recipient[offer_id]!=address payable(0));
+	    balances[msg.sender]-=offer_price[offer_id];
+	    
+	    offer_acceptor[offer_id] = msg.sender;
+	    
+	    offer_escrow_end_unix_time[offer_id] = block.timestamp + offer_escrow_unix_time[offer_id];
+	    
+	    emit event OfferAcceptEvent(offer_id);
+	}
+	
+	function cancelBuy(uint64 offer_id) public {
+	    require(offer_id<num_offers);
+	    require(offer_acceptor[offer_id]==msg.sender);
+	    require(offer_escrow_end_unix_time[offer_id]<block.timestamp);
+	    
+	    offer_acceptor[offer_id] = address payable(0);
+	    balances[msg.sender]-=offer_price[offer_id];
+	    
+	    emit event BuyCancelEvent(offer_id);
+	}
+	
+	function claimPayout(uint64 offer_id) public {
+	    require(offer_id<num_offers);
+	    require(offer_escrow_end_unix_time[offer_id]>block.timestamp);
+	    require(offer_recipient[offer_id]==msg.sender);
+	    
+	    balances[msg.sender]+=offer_price[offer_id];
+	    
+	    event OwnershipTransfer(offer_id);
+	    
 	}
 	
 	function addHouse(string memory adr, uint32 sqft, uint8 bedroom,uint8 bathroom,uint8 h_type, uint16 yr_built, uint32 lotsize, uint64 parcel, uint32 zip) public{
