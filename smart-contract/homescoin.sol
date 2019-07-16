@@ -12,9 +12,7 @@ contract ERC20Interface {
 	event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
 }
 
-
-
-contract HomesCoin is ERC20Interface {
+contract HOMCoin is ERC20Interface {
 
 	string public symbol;
 	string public  name;
@@ -107,7 +105,7 @@ contract HomesCoin is ERC20Interface {
 		return allowed[tokenOwner][spender];
 	}
 	
-	event OfferCreateEvent(uint64 offer_id, uint64 houseid, uint8 day, uint8 month, uint16 year, uint64 price, string source, uint16 escrow_unix_time);
+	event OfferCreateEvent(uint64 offer_id, uint64 houseid, uint8 day, uint8 month, uint16 year, uint256 price, string source, uint16 escrow_unix_time);
 	event OfferCancelEvent(uint64 offer_id);
 	
 	event OfferAcceptEvent(uint64 offer_id);
@@ -130,8 +128,8 @@ contract HomesCoin is ERC20Interface {
 	mapping(uint64=>string) public offer_src;
 	mapping(uint64=>uint64) public offer_house;
 	mapping(uint64=>uint256) public offer_price;
-	mapping(uint64=>uint64) public offer_escrow_end_unix_time;
-	mapping(uint64=>uint64) public offer_escrow_unix_time;
+	mapping(uint64=>uint256) public offer_escrow_end_unix_time;
+	mapping(uint64=>uint256) public offer_escrow_unix_time;
 	mapping(uint64=>address payable) public offer_recipient;
 	mapping(uint64=>address payable) public offer_acceptor;
 	
@@ -145,30 +143,30 @@ contract HomesCoin is ERC20Interface {
 		offer_house[num_offers] = houseid;
 		offer_escrow_end_unix_time[num_offers] = escrow_unix_time;
 		offer_recipient[num_offers] = recipient;
-		offer_acceptor[num_offers] = address payable(0);
+		offer_acceptor[num_offers] = address(0);
 		num_offers+=1;
 	}
 	
 	function cancelOffer(uint64 offer_id) public{
 	    require(offer_id<num_offers);
 	    require(offer_recipient[offer_id]==msg.sender);
-	    require(offer_acceptor[offer_id]==address payable(0));
-	    offer_recipient[offer_id] = address payable(0);
+	    require(offer_acceptor[offer_id]==address(0));
+	    offer_recipient[offer_id] = address(0);
 	    emit OfferCancelEvent(offer_id);
 	}
 	
 	function buyHouse(uint64 offer_id) public {
 	    require(offer_id<num_offers);
 	    require(balanceOf(msg.sender)>=offer_price[offer_id]);
-	    require(offer_acceptor[offer_id]!=address payable(0));
-	    require(offer_recipient[offer_id]!=address payable(0));
+	    require(offer_acceptor[offer_id]==address(0));
+	    require(offer_recipient[offer_id]!=address(0));
 	    balances[msg.sender]-=offer_price[offer_id];
 	    
 	    offer_acceptor[offer_id] = msg.sender;
 	    
 	    offer_escrow_end_unix_time[offer_id] = block.timestamp + offer_escrow_unix_time[offer_id];
 	    
-	    emit event OfferAcceptEvent(offer_id);
+	    emit OfferAcceptEvent(offer_id);
 	}
 	
 	function cancelBuy(uint64 offer_id) public {
@@ -176,10 +174,10 @@ contract HomesCoin is ERC20Interface {
 	    require(offer_acceptor[offer_id]==msg.sender);
 	    require(offer_escrow_end_unix_time[offer_id]<block.timestamp);
 	    
-	    offer_acceptor[offer_id] = address payable(0);
-	    balances[msg.sender]-=offer_price[offer_id];
+	    offer_acceptor[offer_id] = address(0);
+	    balances[msg.sender]+=offer_price[offer_id];
 	    
-	    emit event BuyCancelEvent(offer_id);
+	    emit BuyCancelEvent(offer_id);
 	}
 	
 	function claimPayout(uint64 offer_id) public {
@@ -189,7 +187,7 @@ contract HomesCoin is ERC20Interface {
 	    
 	    balances[msg.sender]+=offer_price[offer_id];
 	    
-	    event OwnershipTransfer(offer_id);
+	    emit OwnershipTransfer(offer_id);
 	    
 	}
 	
