@@ -6,6 +6,7 @@ contract_adr = "0x1574Ea34e90db0618c343E6E64a31e03c40383c9"
 etherbase = "0x37816524091AB70755f2B943fa194B3C407373e2"
 price_target = 1000.0 # in USD
 swing_amount = 5
+PRICE_UNITS = 1000000.0
 
 with open("abi.json") as f:
     abi = json.load(f)
@@ -57,9 +58,9 @@ caller = contract.call()
 
 def set_price(price_eth):
     web3.personal.unlockAccount(etherbase,password, 5) # give us 5 seconds to send the transaction
-    return transactor.setPrice(round(price_eth*10000))
+    return transactor.setPrice(round(price_eth*PRICE_UNITS))
 def get_price():
-    return caller.base_price()/10000.0
+    return caller.base_price()/PRICE_UNITS
 
 # sleep without preventing ctrl-c breaks
 def smartsleep(seconds):
