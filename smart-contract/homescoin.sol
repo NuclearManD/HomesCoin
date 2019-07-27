@@ -23,6 +23,7 @@ contract HOMCoin is ERC20Interface {
 	uint public min_fee;			// min fee for trades
 	uint public fee_div;			// divisor for the fee
 	uint public min_balance;		// minimum balance for the fee acceptor account
+	uint public PRICE_DENOMINATOR = 1000000;
 	
 	address payable public oracle_adr;	// address to send fees to
 	
@@ -31,6 +32,7 @@ contract HOMCoin is ERC20Interface {
 
 	mapping(address => uint) public balances;
 	mapping(address => mapping(address => uint)) allowed;
+
 
 	// ------------------------------------------------------------------------
 	// Constructor
@@ -44,7 +46,7 @@ contract HOMCoin is ERC20Interface {
 		database_owner = db_owner;
 		balances[address(this)] = _totalSupply;
 		emit Transfer(address(0), owner, _totalSupply);
-		base_price=100000;
+		base_price=10000000;
 		oracle_adr = address(uint160(owner));
 		min_balance = .02 ether;
 		fee_div = 100;
@@ -138,10 +140,11 @@ contract HOMCoin is ERC20Interface {
 	// price is in 1e-18 HOM Coin (same units as transfer(), mint(), buy(), sell(), etc)
 	function makeOffer(uint64 houseid, uint8 day, uint8 month, uint16 year, uint256 price, string memory source, uint16 escrow_unix_time, address payable recipient) public{
 		require(msg.sender==database_owner);
+		require(houseid<num_houses);
 		emit OfferCreateEvent(num_offers, houseid,day,month,year, price, source, escrow_unix_time);
 		offer_src[num_offers] = source;
 		offer_house[num_offers] = houseid;
-		offer_escrow_end_unix_time[num_offers] = escrow_unix_time;
+		offer_escrow_unix_time[num_offers] = escrow_unix_time;
 		offer_recipient[num_offers] = recipient;
 		offer_acceptor[num_offers] = address(0);
 		num_offers+=1;
@@ -193,7 +196,6 @@ contract HOMCoin is ERC20Interface {
 	
 	function addHouse(string memory adr, uint32 sqft, uint8 bedroom,uint8 bathroom,uint8 h_type, uint16 yr_built, uint32 lotsize, uint64 parcel, uint32 zip) public{
 		require(msg.sender==database_owner);
-		require(bytes(adr).length<128);
 		addresses[num_houses] = adr;
 		sqfts[num_houses]=sqft;
 		bedrooms[num_houses]=bedroom;
@@ -231,12 +233,12 @@ contract HOMCoin is ERC20Interface {
 	
 	function getSellReturn(uint amount) public view returns (uint value){	// ether for selling amount tokens
 		uint a = getFee();
-		if(a>(amount*base_price/10000))return 0; // if the fee outweighs the return
-		return (amount*base_price/10000) - a;
+		if(a>(amount*base_price/PRICE_DENOMINATOR))return 0; // if the fee outweighs the return
+		return (amount*base_price/PRICE_DENOMINATOR) - a;
 	}
 	
 	function getBuyCost(uint amount) public view returns (uint cost){		// ether cost for buying amount tokens
-	    return (amount*base_price/10000) + getFee();
+	    return (amount*base_price/PRICE_DENOMINATOR) + getFee();
 	}
 	
 	event SellEvent(uint tokens);
@@ -314,10 +316,16 @@ contract HOMCoin is ERC20Interface {
 	 * ================================================================================================ */
 	
 	bool public oracle_change_ready = false;
+	bool public db_auth_destruct = false;
 	
 	function allowOracleChange() public {
 	    require(msg.sender==oracle_adr);
 	    oracle_change_ready = true;
+	}
+	
+	function setAllowContractDestruct(bool allow) public {
+	    require(msg.sender==db_owner);
+	    db_auth_destruct = allow;
 	}
 	
 	function setOracleAddress(address payable adr) public {
@@ -342,6 +350,7 @@ contract HOMCoin is ERC20Interface {
 	
 	function destroy() public {
 		require(msg.sender==owner);
+		require(db_auth_destruct);
 		selfdestruct(oracle_adr);
 	}
 }
